@@ -1,5 +1,3 @@
-"use client";
-
 // Google Calendar API service
 // Uses the user's Google OAuth token to access their calendar
 

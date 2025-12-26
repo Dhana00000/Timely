@@ -1,7 +1,6 @@
 "use client";
 
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import LumiInlineChat from "@/components/lumi/LumiInlineChat";
 import DiscoveryWidget from "@/components/dashboard/DiscoveryWidget";
 import TodayWidget from "@/components/dashboard/TodayWidget";
 import QuickStats from "@/components/dashboard/QuickStats";
@@ -38,9 +37,6 @@ export default function DashboardPage() {
                         </p>
                     </div>
                 </header>
-
-                {/* Lumi AI Chat */}
-                <LumiInlineChat />
 
                 {/* Discovery - This Day in History */}
                 <DiscoveryWidget />

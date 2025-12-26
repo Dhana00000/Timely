@@ -26,10 +26,37 @@ export async function POST(request: NextRequest) {
         }
 
         console.log("🔄 Starting calendar sync for user:", userId);
+        console.log("🔑 Access token preview:", accessToken.substring(0, 20) + "...");
 
         // Fetch events from Google Calendar
-        const googleEvents = await fetchGoogleCalendarEvents(accessToken);
-        console.log(`📅 Fetched ${googleEvents.length} events from Google Calendar`);
+        let googleEvents;
+        try {
+            googleEvents = await fetchGoogleCalendarEvents(accessToken);
+            console.log(`📅 Fetched ${googleEvents.length} events from Google Calendar`);
+        } catch (fetchError) {
+            console.error("❌ Google Calendar API error:", fetchError);
+            const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+
+            // Provide helpful error message
+            if (errorMessage.includes("invalid_token") || errorMessage.includes("Invalid Credentials")) {
+                return NextResponse.json({
+                    error: "Google access token expired or invalid. Please sign out and sign back in with Google.",
+                    details: errorMessage
+                }, { status: 401 });
+            }
+
+            if (errorMessage.includes("Access Not Configured") || errorMessage.includes("has not been used")) {
+                return NextResponse.json({
+                    error: "Google Calendar API is not enabled. Please enable it in Google Cloud Console.",
+                    details: errorMessage
+                }, { status: 403 });
+            }
+
+            return NextResponse.json({
+                error: "Failed to fetch events from Google Calendar",
+                details: errorMessage
+            }, { status: 500 });
+        }
 
         if (googleEvents.length === 0) {
             return NextResponse.json({
