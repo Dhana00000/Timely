@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import LumiChat from "@/components/lumi/LumiChat";
+import FloatingLumiButton from "@/components/lumi/FloatingLumiButton";
 import styles from "./DashboardLayout.module.css";
 
 interface DashboardLayoutProps {
@@ -21,6 +22,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <main className={styles.main}>
                 {children}
             </main>
+            <FloatingLumiButton
+                onClick={() => setIsLumiOpen(true)}
+                isOpen={isLumiOpen}
+            />
             <LumiChat isOpen={isLumiOpen} onClose={() => setIsLumiOpen(false)} />
         </div>
     );

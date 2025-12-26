@@ -28,12 +28,6 @@ export default function FloatingLumiButton({ onClick, isOpen }: FloatingLumiButt
                     <Sparkles size={22} />
                 </div>
             </div>
-
-            {/* Label */}
-            <div className={styles.label}>
-                <MessageCircle size={14} />
-                <span>Chat with Lumi</span>
-            </div>
         </button>
     );
 }
