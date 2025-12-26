@@ -1,0 +1,229 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal {
+    background: var(--color-bg-elevated);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 540px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+    animation: slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.header h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.closeBtn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 6px;
+    transition: all 0.2s ease;
+}
+
+.closeBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-primary);
+}
+
+.error {
+    margin: 16px 24px 0;
+    padding: 12px 16px;
+    background: rgba(255, 69, 58, 0.12);
+    border: 1px solid rgba(255, 69, 58, 0.3);
+    border-radius: 10px;
+    color: #ff453a;
+    font-size: 14px;
+}
+
+.form {
+    padding: 24px;
+}
+
+.field {
+    margin-bottom: 20px;
+}
+
+.field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+}
+
+.field input[type="text"],
+.field input[type="datetime-local"],
+.field textarea {
+    width: 100%;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: var(--color-text-primary);
+    font-size: 16px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.field input:focus,
+.field textarea:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0, 113, 227, 0.5);
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+}
+
+.field textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.colorPicker {
+    display: flex;
+    gap: 12px;
+}
+
+.colorBtn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.colorBtn:hover {
+    transform: scale(1.1);
+}
+
+.colorBtn.selected {
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.colorBtn.selected::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.cancelBtn,
+.submitBtn {
+    flex: 1;
+    height: 48px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border: none;
+}
+
+.cancelBtn {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-text-primary);
+}
+
+.cancelBtn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.submitBtn {
+    background: #0071e3;
+    color: white;
+}
+
+.submitBtn:hover:not(:disabled) {
+    background: #0077ed;
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.35);
+}
+
+.cancelBtn:disabled,
+.submitBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+    .modal {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .row {
+        grid-template-columns: 1fr;
+    }
+}

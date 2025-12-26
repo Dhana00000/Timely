@@ -1,0 +1,108 @@
+.container {
+    background: var(--color-glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--color-glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-primary);
+}
+
+.moreBtn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+}
+
+.moreBtn:hover {
+    background: var(--color-glass-hover);
+    color: var(--color-text-primary);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-glass);
+    border: 1px solid var(--color-glass-border);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.item:hover {
+    background: var(--color-glass-hover);
+    transform: translateX(4px);
+}
+
+.icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+}
+
+.details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.description {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-primary);
+}
+
+.meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-tertiary);
+    margin-top: 2px;
+}
+
+.amountWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.amount {
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    color: var(--color-text-primary);
+}
+
+.splitBadge {
+    font-size: var(--text-xs);
+    padding: 2px 6px;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--color-accent-secondary);
+    border-radius: var(--radius-sm);
+}
