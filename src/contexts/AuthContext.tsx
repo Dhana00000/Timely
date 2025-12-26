@@ -57,10 +57,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (session?.user) {
                 setSession(session);
                 setUser(session.user);
+
+                // Store provider tokens for Google Calendar sync
+                // These are only available immediately after OAuth, so we save them
+                if (session.provider_token) {
+                    console.log('🔑 Storing Google provider token');
+                    localStorage.setItem('google_provider_token', session.provider_token);
+                }
+                if (session.provider_refresh_token) {
+                    console.log('🔑 Storing Google refresh token');
+                    localStorage.setItem('google_refresh_token', session.provider_refresh_token);
+                }
             } else if (_event === 'SIGNED_OUT') {
                 // Clear user on sign out - redirect handled by page components
                 setUser(null);
                 setSession(null);
+                // Clear stored tokens
+                localStorage.removeItem('google_provider_token');
+                localStorage.removeItem('google_refresh_token');
             }
             setLoading(false);
         });

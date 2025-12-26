@@ -91,12 +91,18 @@ export default function SettingsPage() {
         setSyncMessage(null);
 
         try {
-            // Get the provider token from the session
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            const accessToken = currentSession?.provider_token;
+            // Try to get token from localStorage first (stored on initial OAuth)
+            // Fall back to session token if available
+            let accessToken = localStorage.getItem('google_provider_token');
 
             if (!accessToken) {
-                throw new Error("No access token available. Please re-authenticate with Google.");
+                // Try getting from current session (only works immediately after login)
+                const { data: { session: currentSession } } = await supabase.auth.getSession();
+                accessToken = currentSession?.provider_token || null;
+            }
+
+            if (!accessToken) {
+                throw new Error("No access token available. Please sign out and sign back in with Google to grant calendar permissions.");
             }
 
             // Call sync API
