@@ -39,10 +39,59 @@ export async function POST(request: NextRequest) {
         if (parsed.type === 'query' && parsed.queryType === 'calendar') {
             console.log("[Lumi] Processing calendar query...");
 
+            // Demo mode
             if (!userId || userId === "demo-user-id") {
                 return NextResponse.json({
                     response: "📅 You have 3 events today:\n• Design Review with Sarah (2:00 PM)\n• Lunch with Team (12:00 PM)\n• Focus Time (3:00 PM)\n\nVisit your calendar to see more details! (demo)"
                 });
+            }
+
+            // Real user - fetch from Supabase
+            if (isSupabaseConfigured()) {
+                try {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+
+                    const { data: events, error } = await supabase
+                        .from("events")
+                        .select("*")
+                        .eq("user_id", userId)
+                        .gte("start_time", today.toISOString())
+                        .lt("start_time", tomorrow.toISOString())
+                        .order("start_time", { ascending: true });
+
+                    if (error) {
+                        console.error("[Lumi] Error fetching events:", error);
+                        return NextResponse.json({
+                            response: "I had trouble checking your calendar. Try again?"
+                        });
+                    }
+
+                    if (!events || events.length === 0) {
+                        return NextResponse.json({
+                            response: "📅 You have no events scheduled for today. Would you like to schedule something?"
+                        });
+                    }
+
+                    const eventList = events.map((e: { title: string; start_time: string }) => {
+                        const time = new Date(e.start_time).toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                        });
+                        return `• ${e.title} (${time})`;
+                    }).join("\n");
+
+                    return NextResponse.json({
+                        response: `📅 You have ${events.length} event${events.length > 1 ? 's' : ''} today:\n${eventList}\n\nCheck your calendar for more details!`
+                    });
+                } catch (err) {
+                    console.error("[Lumi] Calendar fetch error:", err);
+                    return NextResponse.json({
+                        response: "I had trouble reading your calendar. Try again?"
+                    });
+                }
             }
         }
 
