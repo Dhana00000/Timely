@@ -81,65 +81,88 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('🔵 DataProvider initialized - user:', user);
     console.log('🔵 Is Supabase configured:', isConfigured);
 
-    const [events, setEvents] = useState<Event[]>(demoEvents);
-    const [expenses, setExpenses] = useState<Expense[]>(demoExpenses);
-    const [habits, setHabits] = useState<(Habit & { completed: boolean; streak: number })[]>(demoHabits);
-    const [loading, setLoading] = useState(false);
+    // Start with empty arrays when Supabase is configured, demo data only for unconfigured mode
+    const [events, setEvents] = useState<Event[]>(isConfigured ? [] : demoEvents);
+    const [expenses, setExpenses] = useState<Expense[]>(isConfigured ? [] : demoExpenses);
+    const [habits, setHabits] = useState<(Habit & { completed: boolean; streak: number })[]>(isConfigured ? [] : demoHabits);
+    const [loading, setLoading] = useState(isConfigured);
+    const [hasLoadedData, setHasLoadedData] = useState(false);
 
-    // Track user changes for debugging
-    useEffect(() => {
-        console.log('🔵 User state changed:', user);
-    }, [user]);
-
-    const refreshData = useCallback(async () => {
+    // Internal refresh function
+    const refreshDataInternal = async () => {
         if (!isConfigured || !user) return;
 
+        console.log('🟡 refreshDataInternal called for user:', user.id);
         setLoading(true);
         try {
             // Fetch events
-            const { data: eventsData } = await supabase
+            const { data: eventsData, error: eventsError } = await supabase
                 .from("events")
                 .select("*")
                 .eq("user_id", user.id)
-                .order("start_time", { ascending: true }) as { data: Event[] | null };
+                .order("start_time", { ascending: true });
 
-            if (eventsData) setEvents(eventsData);
+            console.log('📊 Events fetched:', eventsData?.length || 0, 'Error:', eventsError);
+            if (eventsData) setEvents(eventsData as Event[]);
 
             // Fetch expenses
-            const { data: expensesData } = await supabase
+            const { data: expensesData, error: expensesError } = await supabase
                 .from("expenses")
                 .select("*")
                 .eq("user_id", user.id)
-                .order("date", { ascending: false }) as { data: Expense[] | null };
+                .order("date", { ascending: false });
 
-            if (expensesData) setExpenses(expensesData);
+            console.log('📊 Expenses fetched:', expensesData?.length || 0, 'Error:', expensesError);
+            if (expensesData) setExpenses(expensesData as Expense[]);
 
             // Fetch habits with completions
-            const { data: habitsData } = await supabase
+            const { data: habitsData, error: habitsError } = await supabase
                 .from("habits")
                 .select("*")
-                .eq("user_id", user.id) as { data: Habit[] | null };
+                .eq("user_id", user.id);
 
+            console.log('📊 Habits fetched:', habitsData?.length || 0, 'Error:', habitsError);
             if (habitsData) {
                 const today = new Date().toISOString().split("T")[0];
                 const habitsWithStatus = await Promise.all(
-                    habitsData.map(async (habit) => {
+                    (habitsData as Habit[]).map(async (habit) => {
                         const { data: completions } = await supabase
                             .from("habit_completions")
                             .select("*")
                             .eq("habit_id", habit.id)
-                            .order("completed_at", { ascending: false }) as { data: { completed_at: string }[] | null };
+                            .order("completed_at", { ascending: false });
 
-                        const completed = completions?.some(c => c.completed_at === today) ?? false;
+                        const completed = (completions as { completed_at: string }[] | null)?.some(c => c.completed_at === today) ?? false;
                         const streak = completions?.length ?? 0;
                         return { ...habit, completed, streak };
                     })
                 );
                 setHabits(habitsWithStatus);
             }
+            console.log('✅ Data refresh complete');
+        } catch (error) {
+            console.error('❌ Error refreshing data:', error);
         } finally {
             setLoading(false);
         }
+    };
+
+    // Track user changes and load data when user becomes authenticated
+    useEffect(() => {
+        console.log('🔵 User state changed:', user);
+
+        // When user becomes authenticated and we haven't loaded data yet, fetch real data
+        if (user && isConfigured && !hasLoadedData) {
+            console.log('🟢 User authenticated, fetching real data from Supabase...');
+            setHasLoadedData(true);
+            refreshDataInternal();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, isConfigured, hasLoadedData]);
+
+    const refreshData = useCallback(async () => {
+        await refreshDataInternal();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isConfigured, user]);
 
     // Events

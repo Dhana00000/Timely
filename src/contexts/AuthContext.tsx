@@ -126,6 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             provider: "google",
             options: {
                 redirectTo: `${window.location.origin}/dashboard`,
+                scopes: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
+                queryParams: {
+                    access_type: "offline",
+                    prompt: "consent",
+                },
             },
         });
         return { error: error as Error | null };

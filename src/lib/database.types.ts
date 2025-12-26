@@ -21,6 +21,7 @@ export interface Database {
                     color: string
                     is_all_day: boolean
                     notes?: string | null // Smart notes content
+                    google_event_id?: string | null // Link to Google Calendar event
                     created_at: string
                 }
                 Insert: {
@@ -34,6 +35,7 @@ export interface Database {
                     color?: string
                     is_all_day?: boolean
                     notes?: string | null
+                    google_event_id?: string | null
                     created_at?: string
                 }
                 Update: {

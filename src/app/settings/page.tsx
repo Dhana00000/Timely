@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Check, X, RefreshCw, ExternalLink } from "lucide-react";
+import { ArrowLeft, Calendar, RefreshCw, AlertCircle } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useAuth } from "@/contexts/AuthContext";
+import { useData } from "@/contexts/DataContext";
+import { supabase } from "@/lib/supabase";
 import styles from "./page.module.css";
 
 interface CalendarProvider {
@@ -13,11 +16,16 @@ interface CalendarProvider {
     description: string;
     connected: boolean;
     lastSync?: string;
+    syncing?: boolean;
+    error?: string;
 }
 
 export default function SettingsPage() {
     const router = useRouter();
+    const { user, session, signInWithGoogle } = useAuth();
+    const { refreshData } = useData();
     const [activeTab, setActiveTab] = useState("integrations");
+    const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [providers, setProviders] = useState<CalendarProvider[]>([
         {
             id: "google",
@@ -47,56 +55,89 @@ export default function SettingsPage() {
         },
     ]);
 
+    // Check if user is connected via Google
     useEffect(() => {
-        // Load saved providers from localStorage
-        const saved = localStorage.getItem("timely_calendar_providers");
-        if (saved) {
-            const connectedIds = JSON.parse(saved);
-            setProviders(prev => prev.map(p => ({
-                ...p,
-                connected: connectedIds.includes(p.id),
-                lastSync: connectedIds.includes(p.id) ? "Just now" : undefined,
-            })));
-        }
-    }, []);
+        const checkGoogleConnection = async () => {
+            if (session?.provider_token) {
+                // User has a Google OAuth token - mark as connected
+                setProviders(prev => prev.map(p =>
+                    p.id === "google" ? { ...p, connected: true } : p
+                ));
+            }
+        };
+        checkGoogleConnection();
+    }, [session]);
 
     const handleConnect = async (providerId: string) => {
-        // Simulate OAuth flow
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        setProviders(prev => {
-            const updated = prev.map(p =>
-                p.id === providerId
-                    ? { ...p, connected: true, lastSync: "Just now" }
-                    : p
-            );
-            // Save to localStorage
-            const connectedIds = updated.filter(p => p.connected).map(p => p.id);
-            localStorage.setItem("timely_calendar_providers", JSON.stringify(connectedIds));
-            return updated;
-        });
+        if (providerId === "google") {
+            // Trigger Google OAuth with calendar scopes
+            await signInWithGoogle();
+        }
     };
 
     const handleDisconnect = (providerId: string) => {
-        setProviders(prev => {
-            const updated = prev.map(p =>
-                p.id === providerId
-                    ? { ...p, connected: false, lastSync: undefined }
-                    : p
-            );
-            // Save to localStorage
-            const connectedIds = updated.filter(p => p.connected).map(p => p.id);
-            localStorage.setItem("timely_calendar_providers", JSON.stringify(connectedIds));
-            return updated;
-        });
+        setProviders(prev => prev.map(p =>
+            p.id === providerId ? { ...p, connected: false, lastSync: undefined } : p
+        ));
     };
 
     const handleSync = async (providerId: string) => {
-        // Simulate sync
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        if (providerId !== "google" || !user) return;
+
+        // Set syncing state
         setProviders(prev => prev.map(p =>
-            p.id === providerId ? { ...p, lastSync: "Just now" } : p
+            p.id === providerId ? { ...p, syncing: true, error: undefined } : p
         ));
+        setSyncMessage(null);
+
+        try {
+            // Get the provider token from the session
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            const accessToken = currentSession?.provider_token;
+
+            if (!accessToken) {
+                throw new Error("No access token available. Please re-authenticate with Google.");
+            }
+
+            // Call sync API
+            const response = await fetch("/api/calendar/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: user.id,
+                    accessToken: accessToken,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Sync failed");
+            }
+
+            // Update last sync time
+            setProviders(prev => prev.map(p =>
+                p.id === providerId ? { ...p, lastSync: "Just now", syncing: false } : p
+            ));
+
+            setSyncMessage({ type: 'success', text: result.message || `Synced ${result.synced} events` });
+
+            // Refresh data to show new events
+            await refreshData();
+        } catch (error) {
+            console.error("Sync error:", error);
+            setProviders(prev => prev.map(p =>
+                p.id === providerId ? {
+                    ...p,
+                    syncing: false,
+                    error: error instanceof Error ? error.message : "Sync failed"
+                } : p
+            ));
+            setSyncMessage({
+                type: 'error',
+                text: error instanceof Error ? error.message : "Failed to sync calendar"
+            });
+        }
     };
 
     return (
@@ -128,6 +169,13 @@ export default function SettingsPage() {
                                     Connect your calendars for bidirectional sync. Events created in Timely will appear in your connected calendars, and vice versa.
                                 </p>
 
+                                {syncMessage && (
+                                    <div className={`${styles.syncMessage} ${syncMessage.type === 'error' ? styles.error : styles.success}`}>
+                                        {syncMessage.type === 'error' && <AlertCircle size={16} />}
+                                        {syncMessage.text}
+                                    </div>
+                                )}
+
                                 <div className={styles.providers}>
                                     {providers.map((provider) => (
                                         <div
@@ -150,11 +198,12 @@ export default function SettingsPage() {
                                                 {provider.connected ? (
                                                     <>
                                                         <button
-                                                            className={styles.syncBtn}
+                                                            className={`${styles.syncBtn} ${provider.syncing ? styles.syncing : ''}`}
                                                             onClick={() => handleSync(provider.id)}
                                                             title="Sync now"
+                                                            disabled={provider.syncing}
                                                         >
-                                                            <RefreshCw size={16} />
+                                                            <RefreshCw size={16} className={provider.syncing ? styles.spinning : ''} />
                                                         </button>
                                                         <button
                                                             className={styles.disconnectBtn}
