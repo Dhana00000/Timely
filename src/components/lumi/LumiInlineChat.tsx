@@ -1,18 +1,33 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Send, Sparkles, Mic, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Sparkles, Mic, Loader2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import styles from "./LumiInlineChat.module.css";
+
+interface Message {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    timestamp: Date;
+}
 
 export default function LumiInlineChat() {
     const { user, loading } = useAuth();
     const { addEventLocally, addExpenseLocally, addHabitLocally, refreshData } = useData();
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [lastResponse, setLastResponse] = useState("");
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [isExpanded, setIsExpanded] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to bottom when new messages arrive
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
     // Show placeholder while auth is loading
     if (loading) {
         return (
@@ -29,10 +44,18 @@ export default function LumiInlineChat() {
         const userInput = input.trim();
         setInput("");
         setIsLoading(true);
-        setLastResponse("");
+        setIsExpanded(true); // Expand chat when user sends a message
+
+        // Add user message to chat
+        const userMessage: Message = {
+            id: crypto.randomUUID(),
+            role: "user",
+            content: userInput,
+            timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, userMessage]);
 
         try {
-            // Use demo-user-id as fallback if context hasn't loaded yet
             const userId = user?.id || "demo-user-id";
 
             console.log("[Lumi] Sending:", userInput, "UserID:", userId);
@@ -47,9 +70,17 @@ export default function LumiInlineChat() {
             console.log("[Lumi] Response:", data);
 
             const aiResponse = data.response || "I'm here to help!";
-            setLastResponse(aiResponse);
 
-            // Handle returned event data - add to local state
+            // Add assistant message to chat
+            const assistantMessage: Message = {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                content: aiResponse,
+                timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, assistantMessage]);
+
+            // Handle returned event data
             if (data.type === "event_created" && data.event) {
                 console.log("[Lumi] Adding event to local state:", data.event);
                 addEventLocally(data.event);
@@ -67,14 +98,24 @@ export default function LumiInlineChat() {
                 addHabitLocally({ ...data.habit, completed: false, streak: 0 });
             }
 
-            // Refresh data to sync with server (for real authenticated users)
             await refreshData();
         } catch (error) {
             console.error("[Lumi] Error:", error);
-            setLastResponse("Sorry, I'm having trouble right now. Try again?");
+            const errorMessage: Message = {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                content: "Sorry, I'm having trouble right now. Try again?",
+                timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, errorMessage]);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleNewChat = () => {
+        setMessages([]);
+        setIsExpanded(false);
     };
 
     const suggestions = [
@@ -85,18 +126,66 @@ export default function LumiInlineChat() {
     ];
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} ${isExpanded ? styles.expanded : ""}`}>
             <div className={styles.header}>
-                <div className={styles.avatar}>
-                    <Sparkles size={24} />
+                <div className={styles.headerLeft}>
+                    <div className={styles.avatar}>
+                        <Sparkles size={24} />
+                    </div>
+                    <div className={styles.greeting}>
+                        <h2 className={styles.title}>Lumi AI 👋</h2>
+                        <p className={styles.subtitle}>
+                            {messages.length === 0
+                                ? "Your AI assistant. Try scheduling an event or logging an expense!"
+                                : `${messages.length} messages`}
+                        </p>
+                    </div>
                 </div>
-                <div className={styles.greeting}>
-                    <h2 className={styles.title}>Hi! I'm Lumi 👋</h2>
-                    <p className={styles.subtitle}>
-                        {lastResponse || "Your AI assistant. Try scheduling an event or logging an expense!"}
-                    </p>
-                </div>
+                {messages.length > 0 && (
+                    <button
+                        className={styles.newChatBtn}
+                        onClick={handleNewChat}
+                        title="Start new chat"
+                    >
+                        <X size={16} />
+                        New Chat
+                    </button>
+                )}
             </div>
+
+            {/* Chat Messages */}
+            {isExpanded && messages.length > 0 && (
+                <div className={styles.messagesContainer}>
+                    {messages.map((message) => (
+                        <div
+                            key={message.id}
+                            className={`${styles.message} ${message.role === "user" ? styles.userMessage : styles.assistantMessage
+                                }`}
+                        >
+                            {message.role === "assistant" && (
+                                <div className={styles.messageAvatar}>
+                                    <Sparkles size={14} />
+                                </div>
+                            )}
+                            <div className={styles.messageContent}>
+                                {message.content}
+                            </div>
+                        </div>
+                    ))}
+                    {isLoading && (
+                        <div className={`${styles.message} ${styles.assistantMessage}`}>
+                            <div className={styles.messageAvatar}>
+                                <Sparkles size={14} />
+                            </div>
+                            <div className={styles.messageContent}>
+                                <Loader2 size={16} className={styles.spinner} />
+                                Thinking...
+                            </div>
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+            )}
 
             <form className={styles.inputArea} onSubmit={handleSubmit}>
                 <div className={styles.inputWrapper}>
@@ -122,21 +211,23 @@ export default function LumiInlineChat() {
                 </div>
             </form>
 
-            <div className={styles.suggestions}>
-                {suggestions.map((suggestion, i) => (
-                    <button
-                        key={i}
-                        className={styles.suggestion}
-                        onClick={() => {
-                            setInput(suggestion);
-                            inputRef.current?.focus();
-                        }}
-                    >
-                        {suggestion}
-                    </button>
-                ))}
-            </div>
+            {/* Show suggestions only when no messages */}
+            {messages.length === 0 && (
+                <div className={styles.suggestions}>
+                    {suggestions.map((suggestion, i) => (
+                        <button
+                            key={i}
+                            className={styles.suggestion}
+                            onClick={() => {
+                                setInput(suggestion);
+                                inputRef.current?.focus();
+                            }}
+                        >
+                            {suggestion}
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
-

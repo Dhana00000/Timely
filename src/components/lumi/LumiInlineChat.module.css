@@ -2,13 +2,25 @@
     padding: var(--space-6);
     background: var(--color-bg-elevated);
     border-radius: var(--radius-xl);
+    transition: all var(--duration-normal) var(--ease-apple);
+}
+
+.expanded {
+    max-height: 500px;
 }
 
 .header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-4);
     margin-bottom: var(--space-5);
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
 }
 
 .avatar {
@@ -37,6 +49,99 @@
     font-size: var(--text-sm);
     color: var(--color-text-tertiary);
     margin-top: 2px;
+}
+
+.newChatBtn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    background: var(--color-bg-secondary);
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-apple);
+}
+
+.newChatBtn:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+/* Messages Container */
+.messagesContainer {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-bottom: var(--space-4);
+    padding: var(--space-3);
+    background: var(--color-bg-base);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.message {
+    display: flex;
+    gap: var(--space-2);
+    max-width: 85%;
+}
+
+.userMessage {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.assistantMessage {
+    align-self: flex-start;
+}
+
+.messageAvatar {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-sm);
+    color: white;
+    flex-shrink: 0;
+}
+
+.messageContent {
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+}
+
+.userMessage .messageContent {
+    background: var(--color-accent);
+    color: white;
+    border-bottom-right-radius: var(--radius-sm);
+}
+
+.assistantMessage .messageContent {
+    background: var(--color-bg-elevated);
+    color: var(--color-text-primary);
+    border-bottom-left-radius: var(--radius-sm);
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .inputArea {
