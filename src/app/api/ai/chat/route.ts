@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
         // Handle CALENDAR queries
         if (parsed.type === 'query' && parsed.queryType === 'calendar') {
-            console.log("[Lumi] Processing calendar query...");
+            console.log("[Lumi] Processing calendar query, queryDate:", parsed.queryDate);
 
             // Demo mode
             if (!userId || userId === "demo-user-id") {
@@ -49,17 +49,26 @@ export async function POST(request: NextRequest) {
             // Real user - fetch from Supabase
             if (isSupabaseConfigured()) {
                 try {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    // Use parsed queryDate or default to today
+                    const queryDate = parsed.queryDate ? new Date(parsed.queryDate) : new Date();
+                    queryDate.setHours(0, 0, 0, 0);
+                    const nextDay = new Date(queryDate);
+                    nextDay.setDate(nextDay.getDate() + 1);
+
+                    const dateLabel = queryDate.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        month: "short",
+                        day: "numeric",
+                    });
+
+                    console.log(`[Lumi] Fetching events from ${queryDate.toISOString()} to ${nextDay.toISOString()}`);
 
                     const { data: events, error } = await supabase
                         .from("events")
                         .select("*")
                         .eq("user_id", userId)
-                        .gte("start_time", today.toISOString())
-                        .lt("start_time", tomorrow.toISOString())
+                        .gte("start_time", queryDate.toISOString())
+                        .lt("start_time", nextDay.toISOString())
                         .order("start_time", { ascending: true });
 
                     if (error) {
@@ -71,7 +80,7 @@ export async function POST(request: NextRequest) {
 
                     if (!events || events.length === 0) {
                         return NextResponse.json({
-                            response: "📅 You have no events scheduled for today. Would you like to schedule something?"
+                            response: `📅 You have no events scheduled for ${dateLabel}. Would you like to schedule something?`
                         });
                     }
 
@@ -84,7 +93,7 @@ export async function POST(request: NextRequest) {
                     }).join("\n");
 
                     return NextResponse.json({
-                        response: `📅 You have ${events.length} event${events.length > 1 ? 's' : ''} today:\n${eventList}\n\nCheck your calendar for more details!`
+                        response: `📅 You have ${events.length} event${events.length > 1 ? 's' : ''} on ${dateLabel}:\n${eventList}\n\nCheck your calendar for more details!`
                     });
                 } catch (err) {
                     console.error("[Lumi] Calendar fetch error:", err);

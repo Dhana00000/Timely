@@ -9,6 +9,7 @@ export interface ParsedIntent {
     type: 'event' | 'expense' | 'habit' | 'query' | 'unknown';
     action?: 'create' | 'update' | 'delete' | 'reschedule';
     queryType?: 'greeting' | 'calendar' | 'help' | 'unclear';
+    queryDate?: Date; // For calendar queries: the specific date being asked about
     title?: string;
     startTime?: Date;
     endTime?: Date;
@@ -36,13 +37,10 @@ export function parseNaturalLanguage(input: string, currentDate: Date = new Date
         };
     }
 
-    // Check for calendar queries
-    if (isCalendarQuery(lowerInput)) {
-        return {
-            type: 'query',
-            queryType: 'calendar',
-            confidence: 0.9,
-        };
+    // Check for calendar queries - now with date extraction
+    const calendarResult = parseCalendarQuery(input, lowerInput, currentDate);
+    if (calendarResult) {
+        return calendarResult;
     }
 
     // Detect intent type
@@ -100,15 +98,42 @@ function isGreeting(input: string): boolean {
 }
 
 /**
- * Check if input is asking about calendar/schedule
+ * Parse calendar query and extract specific date if mentioned
  */
-function isCalendarQuery(input: string): boolean {
+function parseCalendarQuery(input: string, lowerInput: string, currentDate: Date): ParsedIntent | null {
     const calendarQueries = [
         "what's on", 'whats on', 'show me', 'what do i have',
         'my schedule', 'my calendar', 'free time', 'busy',
-        'events today', 'events tomorrow', 'meetings'
+        'events today', 'events tomorrow', 'meetings',
+        'list my events', 'list events', 'show events', 'check my calendar',
+        'what events', 'any events', 'upcoming events'
     ];
-    return calendarQueries.some(query => input.includes(query));
+
+    const isCalendar = calendarQueries.some(query => lowerInput.includes(query));
+
+    if (!isCalendar) {
+        return null;
+    }
+
+    // Use chrono to extract any date mentioned in the query
+    const parsedDates = chrono.parse(input, currentDate, { forwardDate: true });
+    let queryDate: Date | undefined;
+
+    if (parsedDates.length > 0) {
+        queryDate = parsedDates[0].start.date();
+    } else if (lowerInput.includes('today')) {
+        queryDate = new Date(currentDate);
+    } else if (lowerInput.includes('tomorrow')) {
+        queryDate = new Date(currentDate);
+        queryDate.setDate(queryDate.getDate() + 1);
+    }
+
+    return {
+        type: 'query',
+        queryType: 'calendar',
+        queryDate,
+        confidence: 0.9,
+    };
 }
 
 /**
