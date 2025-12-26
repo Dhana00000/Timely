@@ -4,11 +4,13 @@ import GoogleProvider from "next-auth/providers/google";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 
-// Create Supabase client for auth operations
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Lazy-create Supabase client to avoid issues during build
+function getSupabaseClient() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+    );
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     // No adapter - using JWT sessions only (Supabase handles user data)
@@ -27,6 +29,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!credentials?.email || !credentials?.password) {
                     return null;
                 }
+
+                const supabase = getSupabaseClient();
 
                 // Check user in Supabase
                 const { data: users, error } = await supabase
