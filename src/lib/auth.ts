@@ -1,16 +1,21 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
+import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
 
+// Create Supabase client for auth operations
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-    adapter: PrismaAdapter(prisma),
+    // No adapter - using JWT sessions only (Supabase handles user data)
     providers: [
         GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            clientId: process.env.GOOGLE_CLIENT_ID || "",
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
         }),
         CredentialsProvider({
             name: "credentials",
@@ -23,11 +28,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     return null;
                 }
 
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email as string },
-                });
+                // Check user in Supabase
+                const { data: users, error } = await supabase
+                    .from("users")
+                    .select("*")
+                    .eq("email", credentials.email as string)
+                    .limit(1);
 
-                if (!user || !user.password) {
+                if (error || !users || users.length === 0) {
+                    return null;
+                }
+
+                const user = users[0];
+
+                if (!user.password) {
                     return null;
                 }
 
@@ -53,7 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         strategy: "jwt",
     },
     pages: {
-        signIn: "/auth/signin",
+        signIn: "/auth",
     },
     callbacks: {
         async jwt({ token, user }) {
