@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Calendar, RefreshCw, AlertCircle } from "lucide-react";
+import AuthGuard from "@/components/auth/AuthGuard";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
@@ -20,7 +21,7 @@ interface CalendarProvider {
     error?: string;
 }
 
-export default function SettingsPage() {
+function SettingsContent() {
     const router = useRouter();
     const { user, session, signInWithGoogle } = useAuth();
     const { refreshData } = useData();
@@ -246,5 +247,13 @@ export default function SettingsPage() {
                 </div>
             </div>
         </DashboardLayout>
+    );
+}
+
+export default function SettingsPage() {
+    return (
+        <AuthGuard>
+            <SettingsContent />
+        </AuthGuard>
     );
 }

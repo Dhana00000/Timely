@@ -1,5 +1,6 @@
 "use client";
 
+import AuthGuard from "@/components/auth/AuthGuard";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import LumiInlineChat from "@/components/lumi/LumiInlineChat";
 import DiscoveryWidget from "@/components/dashboard/DiscoveryWidget";
@@ -18,7 +19,7 @@ function getGreeting() {
     return "Good evening";
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
     const userName = useUserName();
 
     return (
@@ -61,3 +62,12 @@ export default function DashboardPage() {
         </DashboardLayout>
     );
 }
+
+export default function DashboardPage() {
+    return (
+        <AuthGuard>
+            <DashboardContent />
+        </AuthGuard>
+    );
+}
+
