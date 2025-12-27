@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseNaturalLanguage, formatConfirmation } from "@/lib/nlp-parser";
+import { parseIntent, formatIntentForLogging } from "@/lib/nlp-parser-v2";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { generateLumiResponse } from "@/lib/gemini";
 
@@ -16,9 +17,11 @@ export async function POST(request: NextRequest) {
 
         console.log("[Lumi] Processing:", message, "UserId:", userId);
 
-        // Parse the natural language input
+        // Parse with both parsers for comprehensive intent detection
         const parsed = parseNaturalLanguage(message);
-        console.log("[Lumi] Parsed:", JSON.stringify(parsed, null, 2));
+        const intentV2 = parseIntent(message);
+        console.log("[Lumi] Parsed v1:", JSON.stringify(parsed, null, 2));
+        console.log("[Lumi] Parsed v2:", formatIntentForLogging(intentV2));
 
         // Handle GREETING queries
         if (parsed.type === 'query' && parsed.queryType === 'greeting') {
@@ -35,9 +38,9 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Handle CALENDAR queries
-        if (parsed.type === 'query' && parsed.queryType === 'calendar') {
-            console.log("[Lumi] Processing calendar query, queryDate:", parsed.queryDate);
+        // Handle CALENDAR queries using v2 parser for better intent detection
+        if (intentV2.type === 'calendar') {
+            console.log("[Lumi] Processing calendar query with v2 parser");
 
             // Demo mode
             if (!userId || userId === "demo-user-id") {
@@ -49,52 +52,76 @@ export async function POST(request: NextRequest) {
             // Real user - fetch from Supabase
             if (isSupabaseConfigured()) {
                 try {
-                    // Use parsed queryDate or default to today
-                    const queryDate = parsed.queryDate ? new Date(parsed.queryDate) : new Date();
-                    queryDate.setHours(0, 0, 0, 0);
-                    const nextDay = new Date(queryDate);
-                    nextDay.setDate(nextDay.getDate() + 1);
+                    let events: { title: string; start_time: string }[] | null = null;
+                    let responseText = "";
 
-                    const dateLabel = queryDate.toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "short",
-                        day: "numeric",
-                    });
+                    if (intentV2.action === 'list') {
+                        // Fetch all upcoming events
+                        console.log("[Lumi] Fetching all upcoming events");
+                        const { data, error } = await supabase
+                            .from("events")
+                            .select("*")
+                            .eq("user_id", userId)
+                            .gte("start_time", new Date().toISOString())
+                            .order("start_time", { ascending: true })
+                            .limit(20);
 
-                    console.log(`[Lumi] Fetching events from ${queryDate.toISOString()} to ${nextDay.toISOString()}`);
+                        if (error) throw error;
+                        events = data;
 
-                    const { data: events, error } = await supabase
-                        .from("events")
-                        .select("*")
-                        .eq("user_id", userId)
-                        .gte("start_time", queryDate.toISOString())
-                        .lt("start_time", nextDay.toISOString())
-                        .order("start_time", { ascending: true });
+                        if (!events || events.length === 0) {
+                            responseText = "📅 You have no upcoming events. Would you like to schedule something?";
+                        } else {
+                            const eventList = events.map((e) => {
+                                const date = new Date(e.start_time);
+                                const dateStr = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                                const timeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+                                return `• ${e.title} (${dateStr} at ${timeStr})`;
+                            }).join("\n");
+                            responseText = `📅 Here are your upcoming ${events.length} events:\n${eventList}`;
+                        }
+                    } else {
+                        // Fetch events for specific date (v2 parser provides the date)
+                        const queryDate = intentV2.date || new Date();
+                        const dayStart = new Date(queryDate);
+                        dayStart.setHours(0, 0, 0, 0);
+                        const dayEnd = new Date(queryDate);
+                        dayEnd.setHours(23, 59, 59, 999);
 
-                    if (error) {
-                        console.error("[Lumi] Error fetching events:", error);
-                        return NextResponse.json({
-                            response: "I had trouble checking your calendar. Try again?"
+                        const dateLabel = dayStart.toLocaleDateString("en-US", {
+                            weekday: "long",
+                            month: "short",
+                            day: "numeric",
                         });
+
+                        console.log(`[Lumi] Fetching events for ${dateLabel}`);
+
+                        const { data, error } = await supabase
+                            .from("events")
+                            .select("*")
+                            .eq("user_id", userId)
+                            .gte("start_time", dayStart.toISOString())
+                            .lte("start_time", dayEnd.toISOString())
+                            .order("start_time", { ascending: true });
+
+                        if (error) throw error;
+                        events = data;
+
+                        if (!events || events.length === 0) {
+                            responseText = `📅 You have no events scheduled for ${dateLabel}. Would you like to schedule something?`;
+                        } else {
+                            const eventList = events.map((e) => {
+                                const time = new Date(e.start_time).toLocaleTimeString("en-US", {
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                });
+                                return `• ${e.title} (${time})`;
+                            }).join("\n");
+                            responseText = `📅 You have ${events.length} event${events.length > 1 ? 's' : ''} on ${dateLabel}:\n${eventList}\n\nCheck your calendar for more details!`;
+                        }
                     }
 
-                    if (!events || events.length === 0) {
-                        return NextResponse.json({
-                            response: `📅 You have no events scheduled for ${dateLabel}. Would you like to schedule something?`
-                        });
-                    }
-
-                    const eventList = events.map((e: { title: string; start_time: string }) => {
-                        const time = new Date(e.start_time).toLocaleTimeString("en-US", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                        });
-                        return `• ${e.title} (${time})`;
-                    }).join("\n");
-
-                    return NextResponse.json({
-                        response: `📅 You have ${events.length} event${events.length > 1 ? 's' : ''} on ${dateLabel}:\n${eventList}\n\nCheck your calendar for more details!`
-                    });
+                    return NextResponse.json({ response: responseText });
                 } catch (err) {
                     console.error("[Lumi] Calendar fetch error:", err);
                     return NextResponse.json({
