@@ -72,13 +72,41 @@ export default function AuthPage() {
                 return;
             }
 
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider,
-                options: {
-                    redirectTo: `${typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`,
-                },
-            });
-            if (error) throw error;
+            if (provider === "google") {
+                // Use AuthContext's signInWithGoogle which has proper account picker params
+                const { signInWithGoogle } = await import("@/contexts/AuthContext").then(m => ({ signInWithGoogle: null }));
+
+                // Sign out first to force fresh account selection
+                await supabase.auth.signOut();
+
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: {
+                        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/dashboard`,
+                        scopes: "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
+                        queryParams: {
+                            access_type: "offline",
+                            prompt: "select_account consent",
+                        },
+                    },
+                });
+                if (error) throw error;
+            } else {
+                // Azure/Outlook OAuth
+                await supabase.auth.signOut();
+
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: "azure",
+                    options: {
+                        redirectTo: `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/dashboard`,
+                        scopes: "openid profile email",
+                        queryParams: {
+                            prompt: "select_account",
+                        },
+                    },
+                });
+                if (error) throw error;
+            }
         } catch (err: any) {
             // Provide helpful error messages for OAuth
             let errorMessage = err.message || "Social login failed";
