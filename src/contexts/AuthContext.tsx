@@ -136,6 +136,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: null };
         }
 
+        // Clear any existing session to force fresh login with account picker
+        await supabase.auth.signOut();
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
