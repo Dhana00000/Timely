@@ -163,6 +163,41 @@
     color: var(--color-text-tertiary);
 }
 
+/* Theme Section */
+.themeSection {
+    padding: var(--space-2) var(--space-3);
+}
+
+.themeBtn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: 40px;
+    padding: 0 var(--space-4);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-apple);
+}
+
+.themeBtn:hover {
+    color: var(--color-text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar.collapsed .themeBtn span {
+    display: none;
+}
+
+.sidebar.collapsed .themeBtn {
+    justify-content: center;
+    padding: 0;
+}
+
 /* User Section */
 .userSection {
     display: flex;

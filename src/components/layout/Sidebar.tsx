@@ -15,8 +15,11 @@ import {
     Sparkles,
     LogOut,
     User,
+    Sun,
+    Moon,
 } from "lucide-react";
 import { useAuth, useUserName } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import styles from "./Sidebar.module.css";
 
 const navItems = [
@@ -38,11 +41,20 @@ export default function Sidebar({ onToggleLumi, isLumiOpen }: SidebarProps) {
     const pathname = usePathname();
     const { user, signOut, isConfigured } = useAuth();
     const userName = useUserName();
+    const { theme, resolvedTheme, setTheme } = useTheme();
 
     const handleSignOut = async () => {
         await signOut();
         // Redirect to home
         window.location.href = "/";
+    };
+
+    const toggleTheme = () => {
+        if (theme === "system") {
+            setTheme(resolvedTheme === "dark" ? "light" : "dark");
+        } else {
+            setTheme(theme === "dark" ? "light" : "dark");
+        }
     };
 
     return (
@@ -107,6 +119,21 @@ export default function Sidebar({ onToggleLumi, isLumiOpen }: SidebarProps) {
                             <span className={styles.lumiTitle}>Lumi AI</span>
                             <span className={styles.lumiSubtitle}>Life, In sync</span>
                         </div>
+                    )}
+                </button>
+            </div>
+
+            {/* Theme Toggle */}
+            <div className={styles.themeSection}>
+                <button
+                    className={styles.themeBtn}
+                    onClick={toggleTheme}
+                    title={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
+                    aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
+                >
+                    {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                    {!isCollapsed && (
+                        <span>{resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}</span>
                     )}
                 </button>
             </div>
